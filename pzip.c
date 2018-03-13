@@ -11,16 +11,22 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <unistd.h>
+#include <sys/mman.h>
+#include <fcntl.h>
+#include <sys/sysinfo.h>
+#include <pthread.h>
 
 int size = 0;
 int len = 64;
-void* f_map = NULL;
+void** f_map = NULL;
 int fd = 0;
 
-void* get_Filesize(const char* filename) {
-    struct stat st;
-    stat(filename, &st);
-    size = st.st_size;
+void* get_filesize(const char* filename) {
+	struct stat st;
+	stat(filename, &st);
+	size = st.st_size;
+	return NULL;
 }
 
 /* Edit Ideas for Parallel
@@ -52,12 +58,12 @@ void* init_file(const char* filename) {
 	}
 
 	//Compute size of file	
-	get_Filesize(filename);
+	get_filesize(filename);
 	
 	f_map = malloc((size/len + 1) * sizeof(void*));
 
 	//Create file pointers for current file
-	int i = 0;
+	int i = 0, offset = 0;
 	while(offset < size) {
 		f_map[i] = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, offset);
 		offset += len;
@@ -70,10 +76,17 @@ void* init_file(const char* filename) {
 		len = size - offset;
 		f_map[i] = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, offset);
 	}
+	
+	return NULL;
 }
 
+void *process(void *arg) {
+	printf("Child\n");
+	return NULL;
+}
 
 int num_CPUS;
+
 /**
  * This is the main method for the pzip.c file. It houses the main
  * algorithm code and does the file io.
@@ -101,9 +114,8 @@ int main(int argc, char *argv[]) {
 
 		//Creates threads
 		for (int i = 0; i < num_CPUS; i++)
-			pthread_create(&threads[i], NULL, process, i);	
-	
-	
+			pthread_create(&threads[i], NULL, process, (void *)(intptr_t)i);	
+		for (int j = 0; j < 1000000; j++);	
 		//Ensures successful file close
 		if (close(fd) != 0) {
 			printf("Unable to close file.");
