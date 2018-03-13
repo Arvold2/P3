@@ -10,9 +10,17 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
 
-FILE f = NULL;
-void* f_pointers = NULL;
+int size = 0;
+int len = 64;
+void* f_map = NULL;
+
+void* get_Filesize(const char* filename) {
+    struct stat st;
+    stat(filename, &st);
+    size = st.st_size;
+}
 
 /* Edit Ideas for Parallel
  * 
@@ -34,8 +42,33 @@ void* f_pointers = NULL;
 	Write to output (Parent or child writes own?)
  *
  */
-void* init_file() {
+void* init_file(const char* filename) {
+	//Open file
+	int fd = open(filename, O_RDONLY);
+	if (fd == -1) {
+		printf("Error opening file.");
+		exit(1);
+	}
 
+	//Compute size of file	
+	get_Filesize(filename);
+	
+	f_map = malloc((size/len + 1) * sizeof(void*));
+
+	//Create file pointers for current file
+	int i = 0;
+	while(offset < size) {
+		f_map[i] = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, offset);
+		offset += len;
+		i++;
+	}
+
+	//Gets last sequence if it is less than length
+	offset -= len;
+	if (offset < size) {
+		len = size - offset;
+		f_map[i] = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, offset);
+	}
 }
 
 /**
