@@ -15,6 +15,7 @@
 int size = 0;
 int len = 64;
 void* f_map = NULL;
+int fd = 0;
 
 void* get_Filesize(const char* filename) {
     struct stat st;
@@ -44,9 +45,9 @@ void* get_Filesize(const char* filename) {
  */
 void* init_file(const char* filename) {
 	//Open file
-	int fd = open(filename, O_RDONLY);
+	fd = open(filename, O_RDONLY);
 	if (fd == -1) {
-		printf("Error opening file.");
+		printf("pzip: cannot open file\n");
 		exit(1);
 	}
 
@@ -71,6 +72,8 @@ void* init_file(const char* filename) {
 	}
 }
 
+
+int num_CPUS;
 /**
  * This is the main method for the pzip.c file. It houses the main
  * algorithm code and does the file io.
@@ -86,58 +89,27 @@ int main(int argc, char *argv[]) {
                 exit(1);
         }
 
-	char test = 'c'; //The char that is being compiled
-	char curr = 'c'; //The char that is checked to see if same as test
-	int count = 1; //Number of same char in a row
-	char save = 'c'; //Saves the char carried from previous file
-
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
+			
+		//Opens file and maps it with mmap
+		init_file(argv[i]);
 		
-		//Opens file and checks for successful open 
-        	FILE *stream = fopen(argv[i], "r");
-        	
-		if (stream == NULL) {
-                	printf("pzip: cannot open file\n");
-                	exit(1);
-       		}
+		//Determines number of CPUS (it might change from file to file)
+		num_CPUS = get_nprocs();
+		pthread_t threads[num_CPUS];
 
-        	//Reads each line and converts to compressed form
-		while ((test = fgetc(stream)) != EOF) {
-		
-			//Checks if same char continues from previous file
-			if (save != test) {
-				count = 1;
-			} else {
-				count++;
-			}
+		//Creates threads
+		for (int i = 0; i < num_CPUS; i++)
+			pthread_create(&threads[i], NULL, process, i);	
 	
-			//Gets next char and checks if same as previous strings
-			curr = fgetc(stream);
-			while (curr == test) {
-				count++;
-				curr = fgetc(stream); //Looks at next char
-			}	
-		
-			//Prints and resets if not match or last file
-			if (curr != EOF || i == argc - 1) {
-				fwrite(&count, sizeof(int), 1, stdout);
-				fprintf(stdout, "%c", test);
-				count = 0;
-				ungetc(curr, stream);
-			} else {
-				//Saves the previous char for use in next file
-				save = test;
-			}
-       
-		}	
-        
+	
 		//Ensures successful file close
-		if (fclose(stream) != 0) {
+		if (close(fd) != 0) {
 			printf("Unable to close file.");
 			exit(1);
-
 		}
+        
 	}
 	return 0;
 }
