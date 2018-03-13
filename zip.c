@@ -11,9 +11,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-FILE f = NULL;
-void* f_pointers = NULL;
-
 /* Edit Ideas for Parallel
  * 
  * 1) Memory map file and give each thread a pointer to work with
@@ -34,9 +31,7 @@ void* f_pointers = NULL;
 	Write to output (Parent or child writes own?)
  *
  */
-void* init_file() {
 
-}
 
 /**
  * This is the main method for the pzip.c file. It houses the main
