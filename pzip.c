@@ -103,9 +103,8 @@ void* init_files(int num_files, char* argv) {
 		return NULL;
 }
 */
-void fill_buf(struct work w) {
+void fill_buf(work *w) {
 	//Add to buffer somehow
-	return 0;
 }
 
 void consume_buff() {
@@ -121,6 +120,7 @@ void *process(void *arg) {
 }
 
 int num_CPUS;
+int w_index;
 
 /**
  * This is the main method for the pzip.c file. It houses the main
@@ -147,7 +147,7 @@ int main(int argc, char *argv[]) {
 	
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
-			
+		char* filename = argv[i];	
 		//Opens file and maps it with mmap
 		//init_file(argv[i]);
 		
@@ -161,15 +161,20 @@ int main(int argc, char *argv[]) {
 		//Compute size of file	
 		get_filesize(filename);
 		
+		for(int i = 0; i < 10000000; i++); //Spin to check that child prints before seg fault
+		
+		//Segfault here because the here below doesn't print
 		//Maps to address space and saves the pointer
-		void* map_p = mmap(NULL, size, PROT_READ, 0, fd, 0);
+		void* map_p = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
 		if (map_p == MAP_FAILED) {
 			printf("Unable to map file.\n");
 			exit(1);
 		}
+
+		printf("here");	
 		
 		//Parses file and adds work to queue
-		for (int i = index; i < (size/len + 1); i++) {
+		for (int i = w_index; i < (size/len + 1); i++) {
 			int work_size;
 			void* work_p;
 		
@@ -180,17 +185,18 @@ int main(int argc, char *argv[]) {
 				work_size = i*len;
 			}
 			
-			work_p = map_p + i - index; //Want current file offset, not ending buffer 
+			work_p = map_p + i - w_index; //Want current file offset, not ending buffer 
 			
 			//Add to queue
 			work w = {i, work_size, work_p};
 			fill_buf(&w);
+			w_index = i;
 		}
 
 		//for (int j = 0; j < 1000000; j++);	
 		
-		//for (int n = 0; n < (size/len + 1); n++)
-			//printf("%s\n.", (char*)f_map[n]);	
+		for (int n = 0; n < (size/len + 1); n++)
+			printf("%s\n.", (char*)f_map[n]);	
 		
 		//Ensures successful file close
 		if (close(fd) != 0) {
