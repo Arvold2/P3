@@ -18,9 +18,18 @@
 #include <pthread.h>
 
 int size = 0;
-int len = 64;
+int len = 5;
 void** f_map = NULL;
 int fd = 0;
+void** buffer; //Shared queue between producers and consumers 
+
+//Structure to hold chunks of work
+typedef struct {
+	int index;
+	int size;
+	void* block;
+} work;
+
 
 void* get_filesize(const char* filename) {
 	struct stat st;
@@ -49,39 +58,65 @@ void* get_filesize(const char* filename) {
 	Write to output (Parent or child writes own?)
  *
  */
-void* init_file(const char* filename) {
-	//Open file
-	fd = open(filename, O_RDONLY);
-	if (fd == -1) {
-		printf("pzip: cannot open file\n");
-		exit(1);
-	}
-
-	//Compute size of file	
-	get_filesize(filename);
+/*
+void* init_files(int num_files, char* argv) {
+	//Creates a pointer for each file specified		
+	for (int file = 0; file < num_files; file++)
+		char* filename = argv[file];
+		
+		//Open file
+		fd = open(filename, O_RDONLY);
+		if (fd == -1) {
+			printf("pzip: cannot open file\n");
+			exit(1);
+		}
+		
+		//Compute size of file	
+		get_filesize(filename);
+		
 	
-	f_map = malloc((size/len + 1) * sizeof(void*));
+		//Maps to address space and saves the pointer
+		void* map_p = mmap(NULL, size, PROT_READ, 0, fd, 0);
+		if (map_p == MAP_FAILED) {
+			printf("Unable to map file.\n");
+			exit(1);
+		}
 
-	//Create file pointers for current file
-	int i = 0, offset = 0;
-	while(offset < size) {
-		f_map[i] = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, offset);
-		offset += len;
-		i++;
-	}
+		files[file] = map_p;
 
-	//Gets last sequence if it is less than length
-	offset -= len;
-	if (offset < size) {
-		len = size - offset;
-		f_map[i] = mmap(NULL, len, PROT_READ, MAP_SHARED, fd, offset);
-	}
-	
-	return NULL;
+		//Create file pointers for current file
+		int i = 0, offset = 0;
+		while(offset < size) {
+			f_map[i] = map_p + offset;
+			offset += len;
+			i++;
+		}
+
+		//Gets last sequence if it is less than length
+		offset -= len;
+		if (offset < size) {
+			len = size - offset;
+			f_map[i] = map_p + offset;
+		}
+		
+		f_map = malloc((size/len + 1) * sizeof(void*));
+		return NULL;
+}
+*/
+void fill_buf(struct work w) {
+	//Add to buffer somehow
+	return 0;
 }
 
+void consume_buff() {
+	//Take ptr out of buffer and start processing it
+	//Add to output array when finished
+}
+//Children enter infinite loop waiting for producer to be finished (Sending num_cpu -1 into buffer)
 void *process(void *arg) {
 	printf("Child\n");
+	consume_buff();
+	//Break out of while loop when finds a -1 and consumes it (doesn't leave it for another to find
 	return NULL;
 }
 
@@ -102,20 +137,61 @@ int main(int argc, char *argv[]) {
                 exit(1);
         }
 
+	//Determines number of CPUS
+	num_CPUS = get_nprocs();
+	pthread_t threads[num_CPUS];
+
+	//Create consumer threads that wait for work 
+	for (int i = 0; i < num_CPUS; i++)
+		pthread_create(&threads[i], NULL, process, (void *)(intptr_t)i);	
+	
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
 			
 		//Opens file and maps it with mmap
-		init_file(argv[i]);
+		//init_file(argv[i]);
 		
-		//Determines number of CPUS (it might change from file to file)
-		num_CPUS = get_nprocs();
-		pthread_t threads[num_CPUS];
+		//Open file
+		fd = open(filename, O_RDONLY);
+		if (fd == -1) {
+			printf("pzip: cannot open file\n");
+			exit(1);
+		}
+		
+		//Compute size of file	
+		get_filesize(filename);
+		
+		//Maps to address space and saves the pointer
+		void* map_p = mmap(NULL, size, PROT_READ, 0, fd, 0);
+		if (map_p == MAP_FAILED) {
+			printf("Unable to map file.\n");
+			exit(1);
+		}
+		
+		//Parses file and adds work to queue
+		for (int i = index; i < (size/len + 1); i++) {
+			int work_size;
+			void* work_p;
+		
+			//Check that size doesn't overflow file
+			if (i*len > size) {
+				work_size = size - (i-1)*len;
+			} else {
+				work_size = i*len;
+			}
+			
+			work_p = map_p + i - index; //Want current file offset, not ending buffer 
+			
+			//Add to queue
+			work w = {i, work_size, work_p};
+			fill_buf(&w);
+		}
 
-		//Creates threads
-		for (int i = 0; i < num_CPUS; i++)
-			pthread_create(&threads[i], NULL, process, (void *)(intptr_t)i);	
-		for (int j = 0; j < 1000000; j++);	
+		//for (int j = 0; j < 1000000; j++);	
+		
+		//for (int n = 0; n < (size/len + 1); n++)
+			//printf("%s\n.", (char*)f_map[n]);	
+		
 		//Ensures successful file close
 		if (close(fd) != 0) {
 			printf("Unable to close file.");
