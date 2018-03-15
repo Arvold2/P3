@@ -23,6 +23,9 @@ int fd = 0;
 int len = 5;
 int w_index = 0;
 int num_CPUS = 0;
+
+void*** files;
+
 //Locks and condition variables
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
@@ -34,6 +37,12 @@ typedef struct {
         int size;
         char* block;
 } work;
+
+//Structure to hold processed char runs
+typedef struct {
+	int count;
+	char c;
+} run;
 
 //For buffer
 int MAX = 5;
@@ -58,16 +67,59 @@ int get_filesize(int filen) {
 	return 0;
 }
 
+work* zip(work* raw) {
+
+	char test = raw->block[0]; //The char that is being compiled
+        char curr = raw->block[0]; //The char that is checked to see if same as test
+        int count = 0; //Number of same char in a row
+	run** proc = malloc(raw->size*sizeof(run*));
+	int proc_size = 0;
+	run *r;
+
+	//Reads each char and creates the runs
+	for (int i = 1; i < raw->size; i++) {
+
+
+		while (curr == test) {
+			count++;
+			i++;	
+			if (i >= raw->size)
+				break;
+			curr++; //Looks at next char
+		}
+		
+		r = malloc(sizeof(run));
+	
+		//Adds to processed string
+		r->count = count;
+		r->c = curr;
+		proc[proc_size++] = r;
+		
+		//If processed last char, saves everything and breaks
+		if (i >= raw->size) {
+			raw->block = (char*)proc; //Need to type cast to run at end
+			raw->size = proc_size;
+			break;
+		}
+
+		curr++;
+		test = curr;
+		count = 0;
+		i++;
+
+	}
+	
+	return raw;
+
+}
 void fill_buf(work *w) {
 	buffer[fillptr] = w;
-	//printf("Fill: %d with %s\n", fillptr, w->block);
 	fillptr = (fillptr + 1) % MAX;
 	numfull++;
 }
 
 work* empty_buff() {
 	work* tmp = buffer[useptr];
-	//printf("Empty slot %d that has %s\n", useptr, tmp->block);
 	useptr  = (useptr + 1) % MAX;
 	numfull--;
 	return tmp;
@@ -84,6 +136,7 @@ void *consumer(void *argv) {
 		if (w == NULL) {
 			break;
 		}
+		zip(w);
 	}
 		
 	return NULL;
@@ -145,11 +198,11 @@ int main(int argc, char *argv[]) {
 
 	//Inititalizes buffer
 	buffer = (work**) malloc(MAX*sizeof(work*));
- 	
+ 	files = malloc((argc-1)*sizeof(void*));
 	//Determines number of CPUS
         num_CPUS = get_nprocs();	
 	
-	
+		
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
 		char* filename = argv[i];	
@@ -163,6 +216,7 @@ int main(int argc, char *argv[]) {
 		
 		//Compute size of file	
 		get_filesize(fd);
+		files[i] = malloc(size*sizeof(void*));
 		
 		//Maps to address space and saves the pointer
 		map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
@@ -170,7 +224,8 @@ int main(int argc, char *argv[]) {
                         printf("Unable to map file.\n");
                         exit(1);
                 }
-		
+	
+		//Create producer thread	
 		pthread_t pid;
               	pthread_create(&pid, NULL, producer, NULL);
 
@@ -180,13 +235,6 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < num_CPUS; i++)
 		      pthread_create(&threads[i], NULL, consumer, NULL);
 
-	/*	printf("Buffer[0]: %s\n", (char*)buffer[0]->block);
-		printf("Buffer[1]: %s\n", (char*)buffer[1]->block);
-		printf("Buffer[2]: %s\n", (char*)buffer[2]->block);
-		printf(">> Actual: %s\n",empty_buff()->block);
-		printf(">> Actual: %s\n",empty_buff()->block);
-		printf(">> Actual: %s\n",empty_buff()->block);
-*/
 		//Wait for threads to finish
 		pthread_join(pid, NULL);
 		for (int i = 0; i < num_CPUS; i++)
