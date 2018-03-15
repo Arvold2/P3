@@ -43,6 +43,10 @@ int useptr = 0;
 work** buffer;
 char* map_p;
 
+int spin() {
+	for (int i = 0; i < 100000000; i++);
+	return 0;
+}
 
 int get_filesize(int filen) {
 	struct stat st;
@@ -55,17 +59,15 @@ int get_filesize(int filen) {
 }
 
 void fill_buf(work *w) {
-        //Add to buffer somehow
-	printf("> %s\n", w->block);
 	buffer[fillptr] = w;
-	printf("Fill: %d with %s\n", fillptr, w->block);
+	//printf("Fill: %d with %s\n", fillptr, w->block);
 	fillptr = (fillptr + 1) % MAX;
 	numfull++;
 }
 
 work* empty_buff() {
 	work* tmp = buffer[useptr];
-	printf("Empty slot %d that has %s\n", useptr, tmp->block);
+	//printf("Empty slot %d that has %s\n", useptr, tmp->block);
 	useptr  = (useptr + 1) % MAX;
 	numfull--;
 	return tmp;
@@ -77,12 +79,13 @@ void *consumer(void *argv) {
 		while (numfull == 0)
 			pthread_cond_wait(&fill, &m);
 		work *w = empty_buff();
-		pthread_cond_signal(&fill);
+		pthread_cond_signal(&empty);
 		pthread_mutex_unlock(&m);
-		if (w == NULL)
-			exit(1);
+		if (w == NULL) {
+			break;
+		}
 	}
-	
+		
 	return NULL;
 }
 
@@ -116,6 +119,17 @@ void *producer(void *argv) {
 		while(numfull == MAX)
 			pthread_cond_wait(&empty, &m);	
 		fill_buf(w);
+		pthread_cond_signal(&fill);
+		pthread_mutex_unlock(&m);
+	}
+	
+	//Add ending conditions
+	for (int i = 0; i < MAX; i++) {	
+		//Aqcuire lock and fill buffer
+		pthread_mutex_lock(&m);
+		while(numfull == MAX)
+			pthread_cond_wait(&empty, &m);	
+		fill_buf(NULL);
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
@@ -166,12 +180,17 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < num_CPUS; i++)
 		      pthread_create(&threads[i], NULL, consumer, NULL);
 
-		printf("Buffer[0]: %s\n", (char*)buffer[0]->block);
+	/*	printf("Buffer[0]: %s\n", (char*)buffer[0]->block);
 		printf("Buffer[1]: %s\n", (char*)buffer[1]->block);
 		printf("Buffer[2]: %s\n", (char*)buffer[2]->block);
 		printf(">> Actual: %s\n",empty_buff()->block);
 		printf(">> Actual: %s\n",empty_buff()->block);
 		printf(">> Actual: %s\n",empty_buff()->block);
+*/
+		//Wait for threads to finish
+		pthread_join(pid, NULL);
+		for (int i = 0; i < num_CPUS; i++)
+			pthread_join(threads[i], NULL);
 
                 w_index += size/len;
 
