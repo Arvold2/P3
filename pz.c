@@ -25,6 +25,7 @@ int w_index = 0;
 int num_CPUS = 0;
 
 void*** files;
+int file_num = 0;
 
 //Locks and condition variables
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
@@ -63,36 +64,37 @@ int get_filesize(int filen) {
 		printf("Error with stat.");
 		exit(1);
 	}
-	size = st.st_size;
+	size = st.st_size - 1;
 	return 0;
 }
 
 work* zip(work* raw) {
-
 	char test = raw->block[0]; //The char that is being compiled
         char curr = raw->block[0]; //The char that is checked to see if same as test
         int count = 0; //Number of same char in a row
 	run** proc = malloc(raw->size*sizeof(run*));
 	int proc_size = 0;
 	run *r;
-
+	
 	//Reads each char and creates the runs
-	for (int i = 1; i < raw->size; i++) {
-
-
+	for (int i = 0; i < raw->size; i++) {
+		curr = raw->block[i];
+		test = curr;
 		while (curr == test) {
 			count++;
-			i++;	
-			if (i >= raw->size)
+			i++;
+			
+			if (i >= raw->size) {
 				break;
-			curr++; //Looks at next char
+			}
+			curr = raw->block[i]; //Looks at next char
 		}
 		
 		r = malloc(sizeof(run));
 	
 		//Adds to processed string
 		r->count = count;
-		r->c = curr;
+		r->c = test;
 		proc[proc_size++] = r;
 		
 		//If processed last char, saves everything and breaks
@@ -101,14 +103,10 @@ work* zip(work* raw) {
 			raw->size = proc_size;
 			break;
 		}
-
-		curr++;
-		test = curr;
+		i--;
 		count = 0;
-		i++;
-
 	}
-	
+		
 	return raw;
 
 }
@@ -136,7 +134,9 @@ void *consumer(void *argv) {
 		if (w == NULL) {
 			break;
 		}
-		zip(w);
+		
+		//printf("file_num: %d index: %d\n", file_num, w->index);	
+		files[file_num][w->index] = (void*)zip(w);
 	}
 		
 	return NULL;
@@ -151,14 +151,19 @@ void *producer(void *argv) {
 	for (int i = w_index; i < (size/len + 1); i++) {
 
 		//Check that size doesn't overflow file
-		if (i*len > size) {
-			work_size = size - (i-1)*len;
+		if ((i+1)*len > size) {
+			work_size = size - i*len;
 		} else {
-			work_size = i*len;
+			work_size = len;
 		}
 		
+		//Doesn't give null jobs to threads
+		if (work_size <= 0) {
+			break;
+		}
+	
 		//Want current file offset, not ending buffer
-		work_p = map_p + i*len - w_index;  
+		work_p = map_p + (i)*len - w_index;  
 
 		w = malloc(sizeof(work));	
 	       
@@ -166,7 +171,7 @@ void *producer(void *argv) {
 		w->index = i;
 		w->size = work_size;
 		w->block = work_p;
-
+		
 		//Aqcuire lock and fill buffer
 		pthread_mutex_lock(&m);
 		while(numfull == MAX)
@@ -198,14 +203,21 @@ int main(int argc, char *argv[]) {
 
 	//Inititalizes buffer
 	buffer = (work**) malloc(MAX*sizeof(work*));
- 	files = malloc((argc-1)*sizeof(void*));
-	//Determines number of CPUS
-        num_CPUS = get_nprocs();	
+ 	files = malloc((argc-1)*sizeof(void**));
 	
+	if (files == NULL) {
+		printf("ERROR MALLOC MAIN TOP.");
+		exit(1);
+	}
+	
+	//Determines number of CPUS
+       // num_CPUS = get_nprocs();	
+	num_CPUS = 1;
 		
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
 		char* filename = argv[i];	
+		file_num  = i - 1;
 		
 		//Open file
 		int fd = open(filename, O_RDONLY);
@@ -214,9 +226,13 @@ int main(int argc, char *argv[]) {
 			exit(1);
 		}
 		
-		//Compute size of file	
+		//Compute size of file and allocate output array
 		get_filesize(fd);
-		files[i] = malloc(size*sizeof(void*));
+		files[i-1] = malloc(size*sizeof(void*));	
+		if (files[i-1] == NULL) {
+			printf("ERROR MALLOC MAIN MID.");
+			exit(1);
+		}
 		
 		//Maps to address space and saves the pointer
 		map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
@@ -241,7 +257,9 @@ int main(int argc, char *argv[]) {
 			pthread_join(threads[i], NULL);
 
                 w_index += size/len;
-
+		
+		for (int i = 0; i < 2; i++) 
+			printf("Count: %d Char: %c\n", ((run*)files[0][i])->count, ((run*)files[0][i])->c); 
 		//Ensures successful file close
 		if (close(fd) != 0) {
 			printf("Unable to close file.");
