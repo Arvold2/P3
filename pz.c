@@ -36,8 +36,7 @@ int fillptr = 0;
 int numfull = 0;
 int useptr = 0;
 work** buffer;
-
-//void** buffer; //Shared queue between producers and consumers 
+char* map_p;
 
 
 int get_filesize(int filen) {
@@ -67,6 +66,35 @@ work* empty_buff() {
 	return tmp;
 }
 
+void *producer(void *argv) {
+	int work_size;
+	char* work_p;
+	work *w;
+
+	//Parses file and adds work to queue
+	for (int i = w_index; i < (size/len + 1); i++) {
+
+		//Check that size doesn't overflow file
+		if (i*len > size) {
+			work_size = size - (i-1)*len;
+		} else {
+			work_size = i*len;
+		}
+		
+		//Want current file offset, not ending buffer
+		work_p = map_p + i*len - w_index;  
+
+		w = malloc(sizeof(work));	
+	       
+		 //Add to queue 
+		w->index = i;
+		w->size = work_size;
+		w->block = work_p;
+		fill_buf(w);
+	}
+	return NULL;
+}
+
 int main(int argc, char *argv[]) {
 	//checks that arguement is passed in
         if (argc < 2) {
@@ -92,37 +120,13 @@ int main(int argc, char *argv[]) {
 		get_filesize(fd);
 		
 		//Maps to address space and saves the pointer
-		char* map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
+		map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
                 if (map_p == MAP_FAILED) {
                         printf("Unable to map file.\n");
                         exit(1);
                 }
 		
-                int work_size;
-                char* work_p;
-		work *w;
-	
-		//Parses file and adds work to queue
-                for (int i = w_index; i < (size/len + 1); i++) {
-
-                        //Check that size doesn't overflow file
-                        if (i*len > size) {
-                                work_size = size - (i-1)*len;
-                        } else {
-                                work_size = i*len;
-                        }
-			
-			//Want current file offset, not ending buffer
-                        work_p = map_p + i*len - w_index;  
-
-			w = malloc(sizeof(work));	
-                       
-			 //Add to queue 
-                        w->index = i;
-			w->size = work_size;
-			w->block = work_p;
-                        fill_buf(w);
-                }
+		producer(buffer);
 	
 		printf("Buffer[0]: %s\n", (char*)buffer[0]->block);
 		printf("Buffer[1]: %s\n", (char*)buffer[1]->block);
@@ -130,7 +134,6 @@ int main(int argc, char *argv[]) {
 		printf(">> Actual: %s\n",empty_buff()->block);
 		printf(">> Actual: %s\n",empty_buff()->block);
 		printf(">> Actual: %s\n",empty_buff()->block);
-	//	printf("Buffer[3]: %s\n", (char*)buffer[3]->block);
 
                 w_index += size/len;
 
