@@ -20,12 +20,14 @@
 
 int size = 0;
 int fd = 0;
-int len = 5;
+int len = 100000;
 int w_index = 0;
 int num_CPUS = 0;
 
 void*** files;
+int* file_size;
 int file_num = 0;
+int num_files = 0;
 
 //Locks and condition variables
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
@@ -105,7 +107,6 @@ work* zip(work* raw) {
 		if (i >= raw->size) {
 			raw->procs = proc; //Need to type cast to run at end
 			raw->size = proc_size;
-			printf("%d\n", (raw->procs[0])->count);
 			break;
 		}
 		i--;
@@ -128,6 +129,47 @@ work* empty_buff() {
 	return tmp;
 }
 
+int print_results() {
+	int tally = 0;
+	char c_curr = 'c';
+	//printf("File size: %d Num Files: %d\n", file_size[0], num_files);	
+	for (int i = 0; i < num_files; i++) { //Each file
+		for (int j = 0; j < file_size[i]; j++) { //Each "work"
+			work* w = (work*)files[i][j];
+			//printf("Work size: %d\n", w->size);
+			for (int k = 0; k < w->size; k++) { //Each "run"
+				run* r = w->procs[k];
+				//printf("File: %d, work: %d run: %d\n", i, j, k);
+				//printf("Tally: %d c_curr: %c\n", tally, c_curr);
+				
+				//Initialize
+				if (i == 0 && j == 0 && k == 0) {
+					tally = r->count;
+					c_curr = r->c;
+					continue;
+				}
+
+				if (c_curr == r->c) {
+					tally += r->count;
+				
+
+					continue;
+				} else {
+					printf("%d%c", tally, c_curr);
+					c_curr = r->c;
+					tally = r->count;
+				}
+				
+				//Prints if last sequence is same as prev
+				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
+					printf("%d%c", tally, c_curr);
+				}
+			}
+		}
+	}
+		
+	return 0;
+}
 void *consumer(void *argv) {
 	while(1) {
 		pthread_mutex_lock(&m);
@@ -140,9 +182,7 @@ void *consumer(void *argv) {
 			break;
 		}
 		
-		printf("file_num: %d index: %d\n", file_num, w->index);	
 		files[file_num][w->index] = (void*)zip(w);
-		//printf("Count: %d Char %c\n", zip(w)->count, zip(w)->c);
 	}
 		
 	return NULL;
@@ -210,15 +250,17 @@ int main(int argc, char *argv[]) {
 	//Inititalizes buffer
 	buffer = (work**) malloc(MAX*sizeof(work*));
  	files = malloc((argc-1)*sizeof(void**));
-	
+	file_size = malloc((argc-1)*sizeof(int));
+
 	if (files == NULL) {
 		printf("ERROR MALLOC MAIN TOP.");
 		exit(1);
 	}
-	
+	num_files = argc-1;
+
 	//Determines number of CPUS
-       // num_CPUS = get_nprocs();	
-	num_CPUS = 1;
+	num_CPUS = get_nprocs();	
+//num_CPUS = 1;
 		
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
@@ -234,12 +276,13 @@ int main(int argc, char *argv[]) {
 		
 		//Compute size of file and allocate output array
 		get_filesize(fd);
-		files[i-1] = malloc(size*sizeof(void*));	
+		files[i-1] = malloc(((size/len) + 1)*sizeof(void*));	
 		if (files[i-1] == NULL) {
 			printf("ERROR MALLOC MAIN MID.");
 			exit(1);
 		}
-		
+		file_size[i-1] = size/len + 1;
+ 
 		//Maps to address space and saves the pointer
 		map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
                 if (map_p == MAP_FAILED) {
@@ -262,16 +305,17 @@ int main(int argc, char *argv[]) {
 		for (int i = 0; i < num_CPUS; i++)
 			pthread_join(threads[i], NULL);
 
+		//Keep index for next file
                 w_index += size/len;
-		
-		printf("Count: %c\n", (((work*)files[0][0])->procs[1]->c)); 
 		
 		//Ensures successful file close
 		if (close(fd) != 0) {
 			printf("Unable to close file.");
 			exit(1);
 		}
-        
+
+		//Combine and print array
+       		print_results(); 
 	}
 	return 0;
 }
