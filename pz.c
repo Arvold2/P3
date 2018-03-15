@@ -32,18 +32,20 @@ pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
 pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 
-//Structure to hold chunks of work
-typedef struct {
-        int index;
-        int size;
-        char* block;
-} work;
 
 //Structure to hold processed char runs
 typedef struct {
 	int count;
 	char c;
 } run;
+
+//Structure to hold chunks of work
+typedef struct {
+        int index;
+        int size;
+        char* block;
+	run** procs;
+} work;
 
 //For buffer
 int MAX = 5;
@@ -80,6 +82,8 @@ work* zip(work* raw) {
 	for (int i = 0; i < raw->size; i++) {
 		curr = raw->block[i];
 		test = curr;
+		
+		//Loops until different chars or end of section for processing
 		while (curr == test) {
 			count++;
 			i++;
@@ -99,8 +103,9 @@ work* zip(work* raw) {
 		
 		//If processed last char, saves everything and breaks
 		if (i >= raw->size) {
-			raw->block = (char*)proc; //Need to type cast to run at end
+			raw->procs = proc; //Need to type cast to run at end
 			raw->size = proc_size;
+			printf("%d\n", (raw->procs[0])->count);
 			break;
 		}
 		i--;
@@ -135,8 +140,9 @@ void *consumer(void *argv) {
 			break;
 		}
 		
-		//printf("file_num: %d index: %d\n", file_num, w->index);	
+		printf("file_num: %d index: %d\n", file_num, w->index);	
 		files[file_num][w->index] = (void*)zip(w);
+		//printf("Count: %d Char %c\n", zip(w)->count, zip(w)->c);
 	}
 		
 	return NULL;
@@ -258,8 +264,8 @@ int main(int argc, char *argv[]) {
 
                 w_index += size/len;
 		
-		for (int i = 0; i < 2; i++) 
-			printf("Count: %d Char: %c\n", ((run*)files[0][i])->count, ((run*)files[0][i])->c); 
+		printf("Count: %c\n", (((work*)files[0][0])->procs[1]->c)); 
+		
 		//Ensures successful file close
 		if (close(fd) != 0) {
 			printf("Unable to close file.");
