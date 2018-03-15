@@ -101,6 +101,7 @@ int main(int argc, char *argv[]) {
                 int work_size;
                 char* work_p;
 		work *w;
+	
 		//Parses file and adds work to queue
                 for (int i = w_index; i < (size/len + 1); i++) {
 
@@ -115,7 +116,8 @@ int main(int argc, char *argv[]) {
                         work_p = map_p + i*len - w_index;  
 
 			w = malloc(sizeof(work));	
-                        //Add to queue (TODO: Does this pass whole file or address)
+                       
+			 //Add to queue 
                         w->index = i;
 			w->size = work_size;
 			w->block = work_p;
