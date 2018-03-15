@@ -22,7 +22,7 @@ int size = 0;
 int fd = 0;
 int len = 5;
 int w_index = 0;
-
+int num_CPUS = 0;
 //Locks and condition variables
 pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
 pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
@@ -131,7 +131,11 @@ int main(int argc, char *argv[]) {
 
 	//Inititalizes buffer
 	buffer = (work**) malloc(MAX*sizeof(work*));
-
+ 	
+	//Determines number of CPUS
+        num_CPUS = get_nprocs();	
+	
+	
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
 		char* filename = argv[i];	
@@ -153,8 +157,15 @@ int main(int argc, char *argv[]) {
                         exit(1);
                 }
 		
-		producer(buffer);
-	
+		pthread_t pid;
+              	pthread_create(&pid, NULL, producer, NULL);
+
+		pthread_t threads[num_CPUS];
+		
+		//Create consumer threads that wait for work 
+		for (int i = 0; i < num_CPUS; i++)
+		      pthread_create(&threads[i], NULL, consumer, NULL);
+
 		printf("Buffer[0]: %s\n", (char*)buffer[0]->block);
 		printf("Buffer[1]: %s\n", (char*)buffer[1]->block);
 		printf("Buffer[2]: %s\n", (char*)buffer[2]->block);
