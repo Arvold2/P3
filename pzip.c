@@ -21,7 +21,7 @@ int size = 0;
 int len = 5;
 void** f_map = NULL;
 int fd = 0;
-void** buffer; //Shared queue between producers and consumers 
+//void** buffer; //Shared queue between producers and consumers 
 
 //Structure to hold chunks of work
 typedef struct {
@@ -31,11 +31,17 @@ typedef struct {
 } work;
 
 
-void* get_filesize(const char* filename) {
+//void* get_filesize(const char* filename) {
+int get_filesize(int filen) {
+	printf("Here");
 	struct stat st;
-	stat(filename, &st);
+	if (fstat(filen, &st) != 0) {
+		printf("Error with stat.");
+		exit(1);
+	}
 	size = st.st_size;
-	return NULL;
+	printf("Size: %d", size);
+	return 0;
 }
 
 /* Edit Ideas for Parallel
@@ -114,13 +120,13 @@ void consume_buff() {
 //Children enter infinite loop waiting for producer to be finished (Sending num_cpu -1 into buffer)
 void *process(void *arg) {
 	printf("Child\n");
-	consume_buff();
+	//consume_buff();
 	//Break out of while loop when finds a -1 and consumes it (doesn't leave it for another to find
 	return NULL;
 }
 
-int num_CPUS;
-int w_index;
+int num_CPUS = 0;
+int w_index = 0;
 
 /**
  * This is the main method for the pzip.c file. It houses the main
@@ -131,6 +137,7 @@ int w_index;
  * @return 0 on successful completion
  */
 int main(int argc, char *argv[]) {
+	printf("Starting");
 	//checks that arguement is passed in
         if (argc < 2) {
                 printf("pzip: file1 [file2 ...]\n");
@@ -139,11 +146,11 @@ int main(int argc, char *argv[]) {
 
 	//Determines number of CPUS
 	num_CPUS = get_nprocs();
-	pthread_t threads[num_CPUS];
-
+	//pthread_t threads[num_CPUS];
+	printf("Num: %d", num_CPUS);
 	//Create consumer threads that wait for work 
-	for (int i = 0; i < num_CPUS; i++)
-		pthread_create(&threads[i], NULL, process, (void *)(intptr_t)i);	
+	//for (int i = 0; i < num_CPUS; i++)
+	//	pthread_create(&threads[i], NULL, process, (void *)(intptr_t)i);	
 	
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
@@ -152,20 +159,21 @@ int main(int argc, char *argv[]) {
 		//init_file(argv[i]);
 		
 		//Open file
-		fd = open(filename, O_RDONLY);
+		int fd = open(filename, O_RDONLY);
 		if (fd == -1) {
 			printf("pzip: cannot open file\n");
 			exit(1);
 		}
 		
 		//Compute size of file	
-		get_filesize(filename);
-		
-		for(int i = 0; i < 10000000; i++); //Spin to check that child prints before seg fault
-		
+		printf("fd: %d", fd);
+		//get_filesize(filename);
+		get_filesize(fd);
+		printf("fd: %d", fd);
+		for(int i = 0; i < 1000000000; i++); //Spin to check that child prints before seg fault
 		//Segfault here because the here below doesn't print
-		//Maps to address space and saves the pointer
-		void* map_p = mmap(NULL, size, PROT_READ, MAP_PRIVATE, fd, 0);
+		//Maps to address space and saves the eointer
+		char* map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
 		if (map_p == MAP_FAILED) {
 			printf("Unable to map file.\n");
 			exit(1);
