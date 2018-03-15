@@ -20,7 +20,7 @@
 
 int size = 0;
 int fd = 0;
-int len = 100000;
+int len = 1000000;
 int w_index = 0;
 int num_CPUS = 0;
 
@@ -139,9 +139,12 @@ int print_results() {
 			//printf("Work size: %d\n", w->size);
 			for (int k = 0; k < w->size; k++) { //Each "run"
 				run* r = w->procs[k];
+				//printf("Incoming: %d %c\n", r->count, r->c);
 				//printf("File: %d, work: %d run: %d\n", i, j, k);
-				//printf("Tally: %d c_curr: %c\n", tally, c_curr);
+				//printf("Tally: %d !c_curr: %c\n", tally, c_curr);
 				
+	
+				//printf("Here");	
 				//Initialize
 				if (i == 0 && j == 0 && k == 0) {
 					tally = r->count;
@@ -150,9 +153,13 @@ int print_results() {
 				}
 
 				if (c_curr == r->c) {
-					tally += r->count;
+					tally += r->count;		
+				//Prints if last sequence is same as prev
+				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
+					printf("%d%c", tally, c_curr);
+					break;
+				}
 				
-
 					continue;
 				} else {
 					printf("%d%c", tally, c_curr);
@@ -163,6 +170,7 @@ int print_results() {
 				//Prints if last sequence is same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
 					printf("%d%c", tally, c_curr);
+					break;
 				}
 			}
 		}
@@ -281,7 +289,14 @@ int main(int argc, char *argv[]) {
 			printf("ERROR MALLOC MAIN MID.");
 			exit(1);
 		}
-		file_size[i-1] = size/len + 1;
+		//printf("SIZE: %d\n", size/len);	
+
+		if ((len % 2) != 1) {
+			file_size[i-1] = size/len + 1;
+		} else {	
+			file_size[i-1] = size/len;
+		}
+		//printf("%d!", file_size[i-1]);
  
 		//Maps to address space and saves the pointer
 		map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
