@@ -16,12 +16,17 @@
 #include <fcntl.h>
 #include <sys/sysinfo.h>
 #include <pthread.h>
+//#include "mythread-macros.h"
 
 int size = 0;
 int fd = 0;
 int len = 5;
 int w_index = 0;
 
+//Locks and condition variables
+pthread_mutex_t m = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t fill = PTHREAD_COND_INITIALIZER;
+pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 
 //Structure to hold chunks of work
 typedef struct {
@@ -66,6 +71,20 @@ work* empty_buff() {
 	return tmp;
 }
 
+void *consumer(void *argv) {
+	while(1) {
+		pthread_mutex_lock(&m);
+		while (numfull == 0)
+			pthread_cond_wait(&fill, &m);
+		work *w = empty_buff();
+		pthread_cond_signal(&fill);
+		pthread_mutex_unlock(&m);
+		if (w == NULL)
+			exit(1);
+	}
+	
+	return NULL;
+}
 void *producer(void *argv) {
 	int work_size;
 	char* work_p;
@@ -90,7 +109,13 @@ void *producer(void *argv) {
 		w->index = i;
 		w->size = work_size;
 		w->block = work_p;
-		fill_buf(w);
+
+		//Aqcuire lock and fill buffer
+		pthread_mutex_lock(&m);
+		while(numfull == MAX)
+			fill_buf(w);
+		pthread_cond_signal(&fill);
+		pthread_mutex_unlock(&m);
 	}
 	return NULL;
 }
