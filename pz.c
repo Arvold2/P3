@@ -85,6 +85,7 @@ void *consumer(void *argv) {
 	
 	return NULL;
 }
+
 void *producer(void *argv) {
 	int work_size;
 	char* work_p;
@@ -113,7 +114,8 @@ void *producer(void *argv) {
 		//Aqcuire lock and fill buffer
 		pthread_mutex_lock(&m);
 		while(numfull == MAX)
-			fill_buf(w);
+			pthread_cond_wait(&empty, &m);	
+		fill_buf(w);
 		pthread_cond_signal(&fill);
 		pthread_mutex_unlock(&m);
 	}
