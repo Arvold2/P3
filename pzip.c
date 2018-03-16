@@ -37,7 +37,7 @@ pthread_cond_t empty = PTHREAD_COND_INITIALIZER;
 
 //Structure to hold processed char runs
 typedef struct {
-	int count;
+	unsigned long int count;
 	char c;
 } run;
 
@@ -107,6 +107,7 @@ work* zip(work* raw) {
 		if (i >= raw->size) {
 			raw->procs = proc; //Need to type cast to run at end
 			raw->size = proc_size;
+//			printf("proc_size: %d", raw->size);
 			break;
 		}
 		i--;
@@ -130,19 +131,20 @@ work* empty_buff() {
 }
 
 int print_results() {
-	int tally = 0;
+	unsigned long int tally = 0;
 	char c_curr = 'c';
 	//printf("File size: %d Num Files: %d\n", file_size[0], num_files);	
 	for (int i = 0; i < num_files; i++) { //Each file
+//		printf("FIle size: %d\n", file_size[i]);
 		for (int j = 0; j < file_size[i]; j++) { //Each "work"
 			work* w = (work*)files[i][j];
-			//printf("Work size: %d\n", w->size);
+//			printf("Work size: %d\n", w->size);
 			for (int k = 0; k < w->size; k++) { //Each "run"
 				run* r = w->procs[k];
-				printf("Incoming: %d %c\n", r->count, r->c);
-				printf("File: %d, work: %d run: %d\n", i, j, k);
-				printf("Tally: %d c_curr: %c\n", tally, c_curr);
-				
+//				printf("Incoming: %lu %c for %d\n", r->count, r->c, j);
+			//	printf("File: %d, work: %d run: %d\n", i, j, k);
+			//	printf("Tally: %d c_curr: %c\n", tally, c_curr);
+				//printf("%d\n", k);	
 	
 				//printf("Here");	
 				//Initialize
@@ -156,20 +158,20 @@ int print_results() {
 					tally += r->count;		
 				//Prints if last sequence is same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					printf("%d-%c", tally, c_curr);
+					printf("%lu%c", tally, c_curr);
 					break;
 				}
 				
 					continue;
 				} else {
-					printf("%d-%c", tally, c_curr);
+					printf("%lu%c", tally, c_curr);
 					c_curr = r->c;
 					tally = r->count;
 				}
 				
 				//Prints if last sequence is same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					printf("%d-%c", tally, c_curr);
+					printf("%lu%c", tally, c_curr);
 					break;
 				}
 			}
@@ -179,6 +181,7 @@ int print_results() {
 	return 0;
 }
 void *consumer(void *argv) {
+	int count = 
 	while(1) {
 		pthread_mutex_lock(&m);
 		while (numfull == 0)
@@ -189,7 +192,7 @@ void *consumer(void *argv) {
 		if (w == NULL) {
 			break;
 		}
-		
+//		printf("Index %d\n", w->index);	
 		files[file_num][w->index] = (void*)zip(w);
 	}
 		
@@ -202,22 +205,29 @@ void *producer(void *argv) {
 	work *w;
 
 	//Parses file and adds work to queue
-	for (int i = w_index; i < (size/len + 1); i++) {
-
-		//Check that size doesn't overflow file
-		if ((i+1)*len > size) {
-			work_size = size - i*len;
-		} else {
-			work_size = len;
+	for (int i = w_index; i < (size/len + 1 + w_index); i++) {
+		if (size < len) {
+			work_size = size;
+			work_p = map_p;
+//			printf("Whet the hell");
 		}
+		//Check that size doesn't overflow file
+		else {
+			if ((i+1)*len > size) {
+				work_size = size - i*len;
+			} else {
+				work_size = len;
+			}
 		
+			//Want current file offset, not ending buffer
+			work_p = map_p + (i)*len - w_index;  
+		}
+
 		//Doesn't give null jobs to threads
 		if (work_size <= 0) {
 			break;
 		}
 	
-		//Want current file offset, not ending buffer
-		work_p = map_p + (i)*len - w_index;  
 
 		w = malloc(sizeof(work));	
 	       
@@ -225,7 +235,7 @@ void *producer(void *argv) {
 		w->index = i;
 		w->size = work_size;
 		w->block = work_p;
-		
+//		printf("work size: %d for file: %d\n", w->size, file_num);
 		//Aqcuire lock and fill buffer
 		pthread_mutex_lock(&m);
 		while(numfull == MAX)
@@ -289,9 +299,8 @@ int main(int argc, char *argv[]) {
 			printf("ERROR MALLOC MAIN MID.");
 			exit(1);
 		}
-		//printf("SIZE: %d\n", size/len);	
 
-		if ((len % 2) != 1) {
+		if ((len % 2) == 0) {
 			file_size[i-1] = size/len + 1;
 		} else {	
 			file_size[i-1] = size/len;
@@ -321,7 +330,7 @@ int main(int argc, char *argv[]) {
 			pthread_join(threads[i], NULL);
 
 		//Keep index for next file
-                w_index += size/len;
+                w_index = 0;
 		
 		//Ensures successful file close
 		if (close(fd) != 0) {
