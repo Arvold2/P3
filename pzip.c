@@ -20,7 +20,7 @@
 
 int size = 0;
 int fd = 0;
-int len = 1000000;
+int len = 8900;
 int w_index = 0;
 int num_CPUS = 0;
 
@@ -131,6 +131,8 @@ work* empty_buff() {
 }
 
 int print_results() {
+	//int index = 0;
+	//char* write_buff = malloc(100000*sizeof(char));
 	unsigned long int tally = 0;
 	char c_curr = 'c';
 	//printf("File size: %d Num Files: %d\n", file_size[0], num_files);	
@@ -158,20 +160,26 @@ int print_results() {
 					tally += r->count;		
 				//Prints if last sequence is same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					printf("%lu%c", tally, c_curr);
+		//			printf("%lu%c", tally, c_curr);
+					fwrite(&c_curr, sizeof(int), 1, stdout);
+                                	fprintf(stdout, "%c", c_curr);
 					break;
 				}
 				
 					continue;
 				} else {
-					printf("%lu%c", tally, c_curr);
+		//			printf("%lu%c", tally, c_curr);
+					fwrite(&c_curr, sizeof(int), 1, stdout);
+                                	fprintf(stdout, "%c", c_curr);
 					c_curr = r->c;
 					tally = r->count;
 				}
 				
 				//Prints if last sequence is same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					printf("%lu%c", tally, c_curr);
+		//			printf("%lu%c", tally, c_curr);
+					fwrite(&c_curr, sizeof(int), 1, stdout);
+                                	fprintf(stdout, "%c", c_curr);
 					break;
 				}
 			}
@@ -181,7 +189,7 @@ int print_results() {
 	return 0;
 }
 void *consumer(void *argv) {
-	int count = 
+	//int count = 0; 
 	while(1) {
 		pthread_mutex_lock(&m);
 		while (numfull == 0)
@@ -192,10 +200,11 @@ void *consumer(void *argv) {
 		if (w == NULL) {
 			break;
 		}
+	//	count++;
 //		printf("Index %d\n", w->index);	
 		files[file_num][w->index] = (void*)zip(w);
 	}
-		
+	//printf("Thread count: %d\n", count);
 	return NULL;
 }
 
