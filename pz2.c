@@ -102,7 +102,7 @@ work* zip(work* raw) {
 		r->count = count;
 		r->c = test;
 		proc[proc_size++] = r;
-	
+		
 		//If processed last char, saves everything and breaks
 		if (i >= raw->size) {
 			raw->procs = proc; //Need to type cast to run at end
@@ -139,9 +139,9 @@ int print_results() {
 			//printf("Work size: %d\n", w->size);
 			for (int k = 0; k < w->size; k++) { //Each "run"
 				run* r = w->procs[k];
-				printf("Incoming: %d %c\n", r->count, r->c);
-				printf("File: %d, work: %d run: %d\n", i, j, k);
-				printf("Tally: %d c_curr: %c\n", tally, c_curr);
+				//printf("Incoming: %d %c\n", r->count, r->c);
+				//printf("File: %d, work: %d run: %d\n", i, j, k);
+				//printf("Tally: %d !c_curr: %c\n", tally, c_curr);
 				
 	
 				//printf("Here");	
@@ -156,20 +156,20 @@ int print_results() {
 					tally += r->count;		
 				//Prints if last sequence is same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					printf("%d-%c", tally, c_curr);
+					printf("%d%c", tally, c_curr);
 					break;
 				}
 				
 					continue;
 				} else {
-					printf("%d-%c", tally, c_curr);
+					printf("%d%c", tally, c_curr);
 					c_curr = r->c;
 					tally = r->count;
 				}
 				
 				//Prints if last sequence is same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					printf("%d-%c", tally, c_curr);
+					printf("%d%c", tally, c_curr);
 					break;
 				}
 			}
@@ -296,7 +296,7 @@ int main(int argc, char *argv[]) {
 		} else {	
 			file_size[i-1] = size/len;
 		}
-	//	printf("%d!", file_size[i-1]);
+		//printf("%d!", file_size[i-1]);
  
 		//Maps to address space and saves the pointer
 		map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
@@ -332,5 +332,5 @@ int main(int argc, char *argv[]) {
 		//Combine and print array
        		print_results(); 
 	}
-	exit(0);
+	return 0;
 }
