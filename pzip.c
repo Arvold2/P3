@@ -17,10 +17,10 @@
 #include <sys/sysinfo.h>
 #include <pthread.h>
 //#include "mythread-macros.h"
-
+#define _GNU_SOURCE 
 int size = 0;
 int fd = 0;
-int len = 8900;
+int len = 1000000;
 int w_index = 0;
 int num_CPUS = 0;
 
@@ -140,12 +140,12 @@ int print_results() {
 //		printf("FIle size: %d\n", file_size[i]);
 		for (int j = 0; j < file_size[i]; j++) { //Each "work"
 			work* w = (work*)files[i][j];
-//			printf("Work size: %d\n", w->size);
+			//printf("Work size: %d\n", w->size);
 			for (int k = 0; k < w->size; k++) { //Each "run"
 				run* r = w->procs[k];
-//				printf("Incoming: %lu %c for %d\n", r->count, r->c, j);
-			//	printf("File: %d, work: %d run: %d\n", i, j, k);
-			//	printf("Tally: %d c_curr: %c\n", tally, c_curr);
+				//printf("Incoming: %lu %c for %d\n", r->count, r->c, j);
+				//printf("File: %d, work: %d run: %d\n", i, j, k);
+		//		printf("Tally: %d c_curr: %c\n", tally, c_curr);
 				//printf("%d\n", k);	
 	
 				//printf("Here");	
@@ -158,13 +158,13 @@ int print_results() {
 
 				if (c_curr == r->c) {
 					tally += r->count;		
-				//Prints if last sequence is same as prev
-				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-		//			printf("%lu%c", tally, c_curr);
-					fwrite(&c_curr, sizeof(int), 1, stdout);
-                                	fprintf(stdout, "%c", c_curr);
-					break;
-				}
+					//Prints if last sequence is same as prev
+					if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
+						//printf("%lu%c", tally, c_curr);
+						fwrite(&c_curr, sizeof(int), 1, stdout);
+						fprintf(stdout, "%c", c_curr);
+						break;
+					}
 				
 					continue;
 				} else {
@@ -175,9 +175,9 @@ int print_results() {
 					tally = r->count;
 				}
 				
-				//Prints if last sequence is same as prev
+				//Prints if last sequence is not same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-		//			printf("%lu%c", tally, c_curr);
+					printf("%lu%c", tally, c_curr);
 					fwrite(&c_curr, sizeof(int), 1, stdout);
                                 	fprintf(stdout, "%c", c_curr);
 					break;
@@ -189,7 +189,7 @@ int print_results() {
 	return 0;
 }
 void *consumer(void *argv) {
-	//int count = 0; 
+	//int count = 0;
 	while(1) {
 		pthread_mutex_lock(&m);
 		while (numfull == 0)
@@ -212,7 +212,6 @@ void *producer(void *argv) {
 	int work_size;
 	char* work_p;
 	work *w;
-
 	//Parses file and adds work to queue
 	for (int i = w_index; i < (size/len + 1 + w_index); i++) {
 		if (size < len) {
@@ -273,9 +272,8 @@ int main(int argc, char *argv[]) {
                 printf("pzip: file1 [file2 ...]\n");
                 exit(1);
         }
-
+	
 	//Inititalizes buffer
-	buffer = (work**) malloc(MAX*sizeof(work*));
  	files = malloc((argc-1)*sizeof(void**));
 	file_size = malloc((argc-1)*sizeof(int));
 
@@ -284,11 +282,10 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 	num_files = argc-1;
-
 	//Determines number of CPUS
 	num_CPUS = get_nprocs();	
-//num_CPUS = 1;
-		
+	//num_CPUS = 4;
+	MAX = num_CPUS;		
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
 		char* filename = argv[i];	
@@ -322,22 +319,21 @@ int main(int argc, char *argv[]) {
                         printf("Unable to map file.\n");
                         exit(1);
                 }
-	
 		//Create producer thread	
 		pthread_t pid;
               	pthread_create(&pid, NULL, producer, NULL);
-
 		pthread_t threads[num_CPUS];
 		
+		buffer = (work**) malloc(MAX*sizeof(work*));
 		//Create consumer threads that wait for work 
-		for (int i = 0; i < num_CPUS; i++)
-		      pthread_create(&threads[i], NULL, consumer, NULL);
-
+		for (int j = 0; j < num_CPUS; j++)
+		      pthread_create(&threads[j], NULL, consumer, NULL);
+			
 		//Wait for threads to finish
 		pthread_join(pid, NULL);
-		for (int i = 0; i < num_CPUS; i++)
-			pthread_join(threads[i], NULL);
-
+		for (int k = 0; k < num_CPUS; k++)
+			pthread_join(threads[k], NULL);
+		free(buffer);
 		//Keep index for next file
                 w_index = 0;
 		
@@ -346,9 +342,9 @@ int main(int argc, char *argv[]) {
 			printf("Unable to close file.");
 			exit(1);
 		}
-
+		
+	}
 		//Combine and print array
        		print_results(); 
-	}
 	exit(0);
 }
