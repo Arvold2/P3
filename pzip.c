@@ -133,7 +133,7 @@ work* empty_buff() {
 int print_results() {
 	//int index = 0;
 	//char* write_buff = malloc(100000*sizeof(char));
-	unsigned long int tally = 0;
+	int tally = 0;
 	char c_curr = 'c';
 	//printf("File size: %d Num Files: %d\n", file_size[0], num_files);	
 	for (int i = 0; i < num_files; i++) { //Each file
@@ -153,6 +153,13 @@ int print_results() {
 				if (i == 0 && j == 0 && k == 0) {
 					tally = r->count;
 					c_curr = r->c;
+					if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
+						printf("%d%c", tally, c_curr);
+						//fwrite(&tally, sizeof(int), 1, stdout);
+						//fprintf(stdout, "%c", c_curr);
+						break;
+					}
+				
 					continue;
 				}
 
@@ -160,26 +167,26 @@ int print_results() {
 					tally += r->count;		
 					//Prints if last sequence is same as prev
 					if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-						//printf("%lu%c", tally, c_curr);
-						fwrite(&c_curr, sizeof(int), 1, stdout);
-						fprintf(stdout, "%c", c_curr);
+						printf("%d%c", tally, c_curr);
+						//fwrite(&tally, sizeof(int), 1, stdout);
+						//fprintf(stdout, "%c", c_curr);
 						break;
 					}
 				
 					continue;
 				} else {
-		//			printf("%lu%c", tally, c_curr);
-					fwrite(&c_curr, sizeof(int), 1, stdout);
-                                	fprintf(stdout, "%c", c_curr);
+					printf("?%d%c", tally, c_curr);
+					//fwrite(&tally, sizeof(int), 1, stdout);
+                                	//fprintf(stdout, "%c", c_curr);
 					c_curr = r->c;
 					tally = r->count;
 				}
 				
 				//Prints if last sequence is not same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					printf("%lu%c", tally, c_curr);
-					fwrite(&c_curr, sizeof(int), 1, stdout);
-                                	fprintf(stdout, "%c", c_curr);
+					printf("|%d%c", tally, c_curr);
+					//fwrite(&tally, sizeof(int), 1, stdout);
+                                	//fprintf(stdout, "%c", c_curr);
 					break;
 				}
 			}
