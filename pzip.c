@@ -131,12 +131,23 @@ work* empty_buff() {
 	numfull--;
 	return tmp;
 }
+typedef struct __attribute__((__packed__))  {
+	int co;
+	char ct;
+} p_o;
 
 int print_results() {
-    char arr[len*num_files*file_size[0]*3];	
-    int counter = 0;
+	int max_size = 0;
+	for (int i = 0; i < num_files; i++)
+		max_size += file_size[i];
+    char* arr = NULL;
+	arr = malloc(10000*sizeof(char)*max_size);	
+   unsigned long int counter = 0;
     int tally = 0;
 	char c_curr = 'c';
+//printf("%d\n",max_size);
+	if (arr == NULL) exit(1);
+	//memcpy((void*)arr, (void*)&max_size, sizeof(int));
 	//printf("File size: %d Num Files: %d\n", file_size[0], num_files);	
 	for (int i = 0; i < num_files; i++) { //Each file
 //		printf("FIle size: %d\n", file_size[i]);
@@ -151,6 +162,7 @@ int print_results() {
       //              fwrite(&arr, len, 1,stdout);
     //                counter = 0;
      //           }
+	//printf("Counter: %lu \n", counter);
                 if(skip == 1){
                     tally = r->count;
                     c_curr = r->c;
@@ -160,29 +172,48 @@ int print_results() {
 			
 				//Initialize
 				if (i == 0 && j == 0 && k == 0) {	
-                    tally = r->count;
+                    			tally = r->count;
+		//	printf("here4");	//	p_o new = {tally, c_curr};    
 					c_curr = r->c;
 					if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					    arr[counter] = tally;
-                        counter += 4;
-                        arr[counter] = c_curr;
-                        counter++;
+				//		p_o new = {tally, c_curr};    
+				memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
+			//	((int*)arr)[counter] = tally;
+					counter += 4;
+					//arr[counter++] = c_curr;
+				memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
+//	counter += 5;			//		arr[counter++] = new;
                //         fwrite(&tally, sizeof(int), 1, stdout);
 				//		fprintf(stdout, "%c", c_curr);
+						counter++;
 						break;
 					}
 				    
 					continue;
 				}
-                if (c_curr == r->c) {
+                		if (c_curr == r->c) {
 					tally += r->count;		
 					//Prints if last sequence is same as prev
 					if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					     arr[counter] = tally;
-                        counter += 4;
-                        arr[counter] = c_curr;
-                        counter++;
+					//p_o new_h = {};
+				memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
+			//	((int*)arr)[counter] = tally;
+					counter += 4;
+					//arr[counter++] = c_curr;
+				memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
+//	counter += 5;			//		arr[counter++] = new;
+               //         fwrite(&tally, sizeof(int), 1, stdout);
+				//		fprintf(stdout, "%c", c_curr);
+						counter++;
+					//new_h.co = tally;
+					//new_h.ct = c_curr;   
+				
 
+			//printf("here3");	//	p_o new = {tally, c_curr};    
+				//	((int*)arr)[counter] = tally;
+				//	counter += 4;
+				//	arr[counter++] = c_curr;
+//counter += 5;
                  //   	fwrite(&tally, sizeof(int), 1, stdout);
 				//		fprintf(stdout, "%c", c_curr);
 						break;
@@ -190,23 +221,47 @@ int print_results() {
 				
 					continue;
 				} else {
-				   	 arr[counter] = tally;
-                     counter += 4;
-                     arr[counter] = c_curr;
-                     counter++;
+			//		printf("HERE");
+			//printf("here2");	//	p_o new = {tally, c_curr};   
+				//	((int*)arr)[counter] = tally;
+			//		counter = counter + 4;
+			//		arr[counter++] = c_curr;
+//counter += 5;
+
+				memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
+			//	((int*)arr)[counter] = tally;
+					counter += 4;
+					//arr[counter++] = c_curr;
+				memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
+//	counter += 5;			//		arr[counter++] = new;
+               //         fwrite(&tally, sizeof(int), 1, stdout);
+				//		fprintf(stdout, "%c", c_curr);
+						counter++;
+				//	p_o new = {tally, c_curr};    
+				//	arr[counter++] = new;
                   //  fwrite(&tally, sizeof(int), 1, stdout);
                   //  fwrite(&c_curr,sizeof(char),1, stdout);
-                    c_curr = r->c;
+                   	 		c_curr = r->c;
 					tally = r->count;
 				}
 				
 				//Prints if last sequence is not same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-			        arr[counter] = tally;
-                    counter += 4;
-                    arr[counter] = c_curr;
-                    counter++;
-            
+			//printf("here1");	//	p_o new = {tally, c_curr};    
+//					((int*)arr)[counter] = tally;
+//					counter += 4;
+				memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
+			//	((int*)arr)[counter] = tally;
+					counter += 4;
+					//arr[counter++] = c_curr;
+				memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
+//	counter += 5;			//		arr[counter++] = new;
+               //         fwrite(&tally, sizeof(int), 1, stdout);
+				//		fprintf(stdout, "%c", c_curr);
+						counter++;
+//					arr[counter++] = c_curr;
+				//	arr[counter++] = new;
+           //counter += 5; 
 			//		fwrite(&tally, sizeof(int), 1, stdout);
             //        fprintf(stdout, "%c", c_curr);
 					break;
@@ -214,9 +269,10 @@ int print_results() {
 			}
 		}
 	}  
+
+//	printf("Counter: %lu, sizeof: %d", counter, (int)(sizeof(char) + sizeof(int)));
     if(counter > 0){
-        fwrite(&arr, counter, 1,stdout);
-        counter = 0;
+        fwrite(arr, sizeof(int) + sizeof(char), counter/(sizeof(int) + sizeof(char)), stdout);
     }  
 	return 0;
 }
@@ -315,8 +371,8 @@ int main(int argc, char *argv[]) {
 	}
 	num_files = argc-1;
 	//Determines number of CPUS
-	num_CPUS = get_nprocs();	
-	//num_CPUS = 4;
+	//num_CPUS = get_nprocs();	
+	num_CPUS = 5;
 	MAX = num_CPUS;		
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
@@ -376,6 +432,7 @@ int main(int argc, char *argv[]) {
 		//Keep index for next file
                 w_index = 0;
 		
+		munmap(map_p, size);	
 		//Ensures successful file close
 		if (close(fd) != 0) {
 			printf("Unable to close file.");
