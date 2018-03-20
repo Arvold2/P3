@@ -20,8 +20,7 @@
 #define _GNU_SOURCE 
 int size = 0;
 int fd = 0;
-int len = 64000;
-int w_index = 0;
+int len = 1280000;
 int num_CPUS = 0;
 
 void*** files;
@@ -109,8 +108,7 @@ work* zip(work* raw) {
            
 			raw->procs = proc; //Need to type cast to run at end
 			raw->size = proc_size;
-//			printf("proc_size: %d", raw->size);
-			break;
+			return raw;
 		}
 		i--;
 		count = 0;
@@ -137,54 +135,40 @@ typedef struct __attribute__((__packed__))  {
 } p_o;
 
 int print_results() {
+	
 	int max_size = 0;
 	for (int i = 0; i < num_files; i++)
 		max_size += file_size[i];
-    char* arr = NULL;
-	arr = malloc(10000*sizeof(char)*max_size);	
-   unsigned long int counter = 0;
-    int tally = 0;
+    	char* arr = NULL;
+	arr = malloc(len*sizeof(char)*max_size);	
+   	unsigned long int counter = 0;
+    	int tally = 0;
 	char c_curr = 'c';
 //printf("%d\n",max_size);
 	if (arr == NULL) exit(1);
-	//memcpy((void*)arr, (void*)&max_size, sizeof(int));
-	//printf("File size: %d Num Files: %d\n", file_size[0], num_files);	
+
 	for (int i = 0; i < num_files; i++) { //Each file
-//		printf("FIle size: %d\n", file_size[i]);
 		for (int j = 0; j < file_size[i]; j++) { //Each "work"
 			work* w = (work*)files[i][j];
-			//printf("Work size: %d\n", w->size);
 			for (int k = 0; k < w->size; k++) { //Each "run"
 				run* r = w->procs[k];
-//				printf("Incoming: %lu %c for %d\n", r->count, r->c, j);
-	//			printf("Tally: %d c_curr: %c\n", tally, c_curr);
-	 //           if(counter == len){
-      //              fwrite(&arr, len, 1,stdout);
-    //                counter = 0;
-     //           }
-	//printf("Counter: %lu \n", counter);
-                if(skip == 1){
-                    tally = r->count;
-                    c_curr = r->c;
-                    skip = 0;
-                    continue;
-                }
-			
+				if (counter > len) {
+       					fwrite(arr, sizeof(int) + sizeof(char), counter/(sizeof(int) + sizeof(char)), stdout);
+					counter = 0;
+				}
+
 				//Initialize
-				if (i == 0 && j == 0 && k == 0) {	
+				if (skip==1 ||(i == 0 && j == 0 && k == 0)) {	
                     			tally = r->count;
-		//	printf("here4");	//	p_o new = {tally, c_curr};    
 					c_curr = r->c;
+					if (skip == 1) {
+						skip =0;
+						continue;
+					}
 					if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-				//		p_o new = {tally, c_curr};    
-				memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
-			//	((int*)arr)[counter] = tally;
-					counter += 4;
-					//arr[counter++] = c_curr;
-				memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
-//	counter += 5;			//		arr[counter++] = new;
-               //         fwrite(&tally, sizeof(int), 1, stdout);
-				//		fprintf(stdout, "%c", c_curr);
+						memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
+						counter += 4;
+						memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
 						counter++;
 						break;
 					}
@@ -193,91 +177,46 @@ int print_results() {
 				}
                 		if (c_curr == r->c) {
 					tally += r->count;		
+					
 					//Prints if last sequence is same as prev
 					if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-					//p_o new_h = {};
-				memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
-			//	((int*)arr)[counter] = tally;
-					counter += 4;
-					//arr[counter++] = c_curr;
-				memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
-//	counter += 5;			//		arr[counter++] = new;
-               //         fwrite(&tally, sizeof(int), 1, stdout);
-				//		fprintf(stdout, "%c", c_curr);
+						memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
+						counter += 4;
+						memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
 						counter++;
-					//new_h.co = tally;
-					//new_h.ct = c_curr;   
-				
-
-			//printf("here3");	//	p_o new = {tally, c_curr};    
-				//	((int*)arr)[counter] = tally;
-				//	counter += 4;
-				//	arr[counter++] = c_curr;
-//counter += 5;
-                 //   	fwrite(&tally, sizeof(int), 1, stdout);
-				//		fprintf(stdout, "%c", c_curr);
 						break;
 					}
 				
 					continue;
 				} else {
-			//		printf("HERE");
-			//printf("here2");	//	p_o new = {tally, c_curr};   
-				//	((int*)arr)[counter] = tally;
-			//		counter = counter + 4;
-			//		arr[counter++] = c_curr;
-//counter += 5;
 
-				memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
-			//	((int*)arr)[counter] = tally;
+					memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
 					counter += 4;
-					//arr[counter++] = c_curr;
-				memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
-//	counter += 5;			//		arr[counter++] = new;
-               //         fwrite(&tally, sizeof(int), 1, stdout);
-				//		fprintf(stdout, "%c", c_curr);
-						counter++;
-				//	p_o new = {tally, c_curr};    
-				//	arr[counter++] = new;
-                  //  fwrite(&tally, sizeof(int), 1, stdout);
-                  //  fwrite(&c_curr,sizeof(char),1, stdout);
+					memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
+					counter++;
                    	 		c_curr = r->c;
 					tally = r->count;
 				}
 				
 				//Prints if last sequence is not same as prev
 				if (i == num_files - 1 && j == file_size[i] - 1 && k == w->size - 1) {
-			//printf("here1");	//	p_o new = {tally, c_curr};    
-//					((int*)arr)[counter] = tally;
-//					counter += 4;
-				memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
-			//	((int*)arr)[counter] = tally;
+					memcpy((void*)arr + counter, (void*)&tally, sizeof(int)); 
 					counter += 4;
-					//arr[counter++] = c_curr;
-				memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
-//	counter += 5;			//		arr[counter++] = new;
-               //         fwrite(&tally, sizeof(int), 1, stdout);
-				//		fprintf(stdout, "%c", c_curr);
-						counter++;
-//					arr[counter++] = c_curr;
-				//	arr[counter++] = new;
-           //counter += 5; 
-			//		fwrite(&tally, sizeof(int), 1, stdout);
-            //        fprintf(stdout, "%c", c_curr);
+					memcpy((void*)arr + counter, (void*)&c_curr, sizeof(char)); 
+					counter++;
 					break;
 				}
 			}
 		}
 	}  
 
-//	printf("Counter: %lu, sizeof: %d", counter, (int)(sizeof(char) + sizeof(int)));
+	//printf("Counter: %lu, sizeof: %d", counter, (int)(sizeof(char) + sizeof(int)));
     if(counter > 0){
         fwrite(arr, sizeof(int) + sizeof(char), counter/(sizeof(int) + sizeof(char)), stdout);
     }  
 	return 0;
 }
 void *consumer(void *argv) {
-	//int count = 0;
 	while(1) {
 		pthread_mutex_lock(&m);
 		while (numfull == 0)
@@ -288,11 +227,8 @@ void *consumer(void *argv) {
 		if (w == NULL) {
 			break;
 		}
-	//	count++;
-//		printf("Index %d\n", w->index);	
 		files[file_num][w->index] = (void*)zip(w);
 	}
-	//printf("Thread count: %d\n", count);
 	return NULL;
 }
 
@@ -301,11 +237,10 @@ void *producer(void *argv) {
 	char* work_p;
 	work *w;
 	//Parses file and adds work to queue
-	for (int i = w_index; i < (size/len + 1 + w_index); i++) {
+	for (int i = 0; i < (size/len + 1); i++) {
 		if (size < len) {
 			work_size = size;
 			work_p = map_p;
-//			printf("Whet the hell");
 		}
 		//Check that size doesn't overflow file
 		else {
@@ -316,7 +251,7 @@ void *producer(void *argv) {
 			}
 		
 			//Want current file offset, not ending buffer
-			work_p = map_p + (i)*len - w_index;  
+			work_p = map_p + (i)*len;  
 		}
 
 		//Doesn't give null jobs to threads
@@ -331,7 +266,7 @@ void *producer(void *argv) {
 		w->index = i;
 		w->size = work_size;
 		w->block = work_p;
-//		printf("work size: %d for size: %d\n", w->size, size);
+		
 		//Aqcuire lock and fill buffer
 		pthread_mutex_lock(&m);
 		while(numfull == MAX)
@@ -372,7 +307,7 @@ int main(int argc, char *argv[]) {
 	num_files = argc-1;
 	//Determines number of CPUS
 	//num_CPUS = get_nprocs();	
-	num_CPUS = 5;
+	num_CPUS = get_nprocs();
 	MAX = num_CPUS;		
 	//Loops through each incoming file and un-zips them
 	for (int i = 1; i < argc; i++) {
@@ -388,12 +323,13 @@ int main(int argc, char *argv[]) {
 		
 		//Compute size of file and allocate output array
 		get_filesize(fd);
-  //      printf("fd: %d SIZE: %d",fd,size);
-        if(size <= 0){
-            file_size[i-1] = 0;
-            skip = 1;
-            continue;
-        }
+  		//      printf("fd: %d SIZE: %d",fd,size);
+        	if(size <= 0){
+            		file_size[i-1] = 0;
+            		skip = 1;
+            		continue;
+        	}
+
 		files[i-1] = malloc(((size/len) + 1)*sizeof(void*));	
 		if (files[i-1] == NULL) {
 			printf("ERROR MALLOC MAIN MID.");
@@ -405,15 +341,14 @@ int main(int argc, char *argv[]) {
 		} else {	
 			file_size[i-1] = size/len;
 		}
-	//	printf("%d!", file_size[i-1]);
  
 		//Maps to address space and saves the pointer
 		map_p = mmap(0, size, PROT_READ, MAP_SHARED, fd, 0);
                 if (map_p == MAP_FAILED) {
                         printf("Unable to map file.\n");
-                        printf("SIZE: %d\n",size); 
                         exit(1);
                 }
+
 		//Create producer thread	
 		pthread_t pid;
               	pthread_create(&pid, NULL, producer, NULL);
@@ -429,8 +364,6 @@ int main(int argc, char *argv[]) {
 		for (int k = 0; k < num_CPUS; k++)
 			pthread_join(threads[k], NULL);
 		free(buffer);
-		//Keep index for next file
-                w_index = 0;
 		
 		munmap(map_p, size);	
 		//Ensures successful file close
